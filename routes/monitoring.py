@@ -9,15 +9,14 @@ def add_monitoring():
     conn = get_db_connection()
     cursor = conn.cursor()
     query = '''
-        INSERT INTO monitoring_tugas (id_tugas, status, komentar, NIDN, link_dokumen)
-        VALUES (%s, %s, %s, %s, %s)
+        INSERT INTO monitoring_tugas (id_tugas, status, komentar, NIDN)
+        VALUES (%s, %s, %s, %s)
     '''
     cursor.execute(query, (
         data['id_tugas'],
         data['status'],
         data['komentar'],
-        data['NIDN'],
-        data['link_dokumen']
+        data['NIDN']
     ))
     conn.commit()
     conn.close()
@@ -28,11 +27,7 @@ def list_tugas():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     query = '''
-        SELECT m.NIM, m.nama_mhs, t.judul, t.link_dokumen, mon.status, mon.komentar, d.nama_dosen
-        FROM monitoring_tugas mon
-        JOIN tugas t ON mon.id_tugas = t.id_tugas
-        JOIN mahasiswa m ON t.NIM = m.NIM
-        JOIN dosen d ON mon.NIDN = d.NIDN
+        SELECT * FROM v_monitoring_tugas;
     '''
     cursor.execute(query)
     result = cursor.fetchall()

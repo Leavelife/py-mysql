@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox, simpledialog
 import requests
 
 class Tooltip:
@@ -30,7 +30,7 @@ class Tooltip:
             self.tipwindow.destroy()
             self.tipwindow = None
 
-# ⬛ Base class untuk window (Encapsulation)
+# Base class untuk window (Encapsulation)
 class BaseWindow(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -38,7 +38,7 @@ class BaseWindow(tk.Tk):
         self.geometry("1000x500")
         self.configure(bg="white")
 
-# ⬛ Class tombol (Inheritance)
+# Class tombol (Inheritance)
 class ActionButton(tk.Button):
     def __init__(self, master, text, command):
         super().__init__(
@@ -56,7 +56,7 @@ class ActionButton(tk.Button):
             bd=0
         )
 
-# ⬛ Main Window
+# Main Window
 class MainApp(BaseWindow):
     def __init__(self):
         super().__init__()
@@ -85,25 +85,85 @@ class MainApp(BaseWindow):
         frame.pack(pady=10)
 
         self.buttons = [
-            ActionButton(frame, "MHS", self.placeholder),
-            ActionButton(frame, "Input TA", self.placeholder),
-            ActionButton(frame, "Edit TA", self.placeholder),
-            ActionButton(frame, "Hapus TA", self.placeholder),
-            ActionButton(frame, "Dosen", self.placeholder),
-            ActionButton(frame, "EDIT TA mahasiswa", self.placeholder)
+            ActionButton(frame, "Input TA", lambda: self.placeholder("input")),
+            ActionButton(frame, "Edit TA", self.edit_ta_dialog),
+            ActionButton(frame, "Hapus TA", self.delete_ta_dialog),
         ]
-
         for btn in self.buttons:
             btn.pack(side=tk.LEFT, padx=8, pady=5)
 
+    # Contoh Polymorphism (semua tombol panggil fungsi ini tapi bisa diganti nanti)
+    def placeholder(self, mode, data=None):
+        win = tk.Toplevel(self)
+        win.title(f"{mode.capitalize()} tugas akhir")
 
-    # ⬛ Contoh Polymorphism (semua tombol panggil fungsi ini tapi bisa diganti nanti)
-    def placeholder(self):
-        print("Fungsi belum diimplementasikan")
-    
+        labels = ["NIM", "judul", "link_dokumen", "kode_mk"]
+        entries = {}
+
+        for idx, label in enumerate(labels):
+            tk.Label(win, text=label).grid(row=idx, column=0, sticky="w", padx=10, pady=5)
+            entry = tk.Entry(win, width=30)
+            entry.grid(row=idx, column=1, padx=10, pady=5)
+            if data and label in data:
+                entry.insert(0, data[label])
+            entries[label] = entry
+
+        def submit():
+            payload = {key: entry.get() for key, entry in entries.items()}
+            if mode == "input":
+                url = "http://192.168.1.25:5000/tugas/add"
+                response = requests.post(url, json=payload)
+            elif mode == "edit":
+                nim = data["NIM"]
+                url = f"http://192.168.1.25:5000/monitoring/update/{nim}"
+                response = requests.put(url, json=payload)
+            elif mode == "delete":
+                nim = data["NIM"]
+                url = f"http://192.168.1.25:5000/monitoring/delete/{nim}"
+                response = requests.delete(url)
+
+            if response.status_code in [200, 201]:
+                messagebox.showinfo("Sukses", f"{mode.capitalize()} berhasil")
+                self.tree.delete(*self.tree.get_children())
+                self.load_data()
+                win.destroy()
+            else:
+                messagebox.showerror("Gagal", f"Gagal {mode}: {response.text}")
+
+        if mode == "delete":
+            # Hanya tampilkan konfirmasi
+            for widget in win.winfo_children():
+                widget.destroy()
+            nim = data.get("NIM", "________")
+            tk.Label(win, text=f"Apakah anda yakin ingin menghapus TA\ndengan NIM {nim}?").pack(pady=10)
+            tk.Button(win, text="HAPUS", command=submit).pack(pady=10)
+        else:
+            tk.Button(win, text="Submit", command=submit).grid(row=len(labels), column=0, columnspan=2, pady=10)
+
+    def get_selected_data(self):
+        selected = self.tree.selection()
+        if not selected:
+            messagebox.showwarning("Peringatan", "Pilih data terlebih dahulu.")
+            return None
+        values = self.tree.item(selected[0])["values"]
+        if not values:
+            return None
+        keys = ["NIM", "nama_mhs", "Matakuliah", "Judul TA", "link"]
+        return dict(zip(keys, values))
+
+    def edit_ta_dialog(self):
+        data = self.get_selected_data()
+        if data:
+            self.placeholder("edit", data)
+
+    def delete_ta_dialog(self):
+        data = self.get_selected_data()
+        if data:
+            self.placeholder("delete", data)
+
     def load_data(self):
         try:
-            response = requests.get("http://127.0.0.1:5000/monitoring/list")
+            response = requests.get("http://192.168.1.25:5000/monitoring/list")
             data = response.json()
             for item in data:
                 row_id = self.tree.insert('', tk.END, values=(
@@ -149,7 +209,7 @@ class MainApp(BaseWindow):
                 self.tooltip.hide_tip()
                 self.last_tooltip_text = None
 
-# ⬛ Run App
+# Run App
 if __name__ == '__main__':
     app = MainApp()
     app.mainloop()

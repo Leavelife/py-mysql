@@ -9,19 +9,11 @@ def add_tugas():
     conn = get_db_connection()
     cursor = conn.cursor()
     query = '''
-        INSERT INTO tugas (NIM, judul, kode_mk)
-        VALUES (%s, %s, %s)
+        INSERT INTO tugas (NIM, judul, link_dokumen, kode_mk)
+        VALUES (%s, %s, %s, %s)
     '''
-    cursor.execute(query, (data['NIM'], data['judul'], data['kode_mk']))
+    cursor.execute(query, (data['NIM'], data['judul'], data['link_dokumen'], data['kode_mk']))
     conn.commit()
     conn.close()
+    print("data : ", data)
     return jsonify({'message': 'Tugas ditambahkan'}), 201
-
-@bp.route('/all', methods=['GET'])
-def get_all_tugas():
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM tugas")
-    result = cursor.fetchall()
-    conn.close()
-    return jsonify(result)
