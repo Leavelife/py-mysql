@@ -6,16 +6,44 @@ bp = Blueprint('tugas', __name__, url_prefix='/tugas')
 @bp.route('/add', methods=['POST'])
 def add_tugas():
     data = request.json
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    query = '''
-        INSERT INTO tugas (NIM, judul, link_dokumen, kode_mk)
-        VALUES (%s, %s, %s, %s)
-    '''
-    cursor.execute(query, (data['NIM'], data['judul'], data['link_dokumen'], data['kode_mk']))
-    conn.commit()
-    conn.close()
-    return jsonify({'message': 'Tugas ditambahkan'}), 201
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # ✅ Validasi apakah NIM ada di tabel mahasiswa
+        cursor.execute("SELECT * FROM mahasiswa WHERE NIM = %s", (data['NIM'],))
+        mahasiswa = cursor.fetchone()
+
+        if not mahasiswa:
+            return jsonify({"error": "NIM tidak terdaftar dalam database mahasiswa!"}), 400
+
+        cursor.execute("SELECT * FROM mata_kuliah WHERE id_mk = %s", (data['kode_mk'],))
+        kode_mk = cursor.fetchone()
+        if not kode_mk:
+            return jsonify({"error": "Mata kuliah tidak ditemukan!"}), 400
+
+        # ✅ Lanjutkan input tugas
+        query = '''
+            INSERT INTO tugas (NIM, judul, link_dokumen, kode_mk)
+            VALUES (%s, %s, %s, %s)
+        '''
+        cursor.execute(query, (
+            data['NIM'],
+            data['judul'],
+            data['link_dokumen'],
+            data['kode_mk']
+        ))
+
+        conn.commit()
+        return jsonify({'message': 'Tugas ditambahkan'}), 201
+
+    except Exception as e:
+        return jsonify({"error": f"Gagal menambahkan tugas: {str(e)}"}), 500
+
+    finally:
+        if conn.is_connected():
+            conn.close()
+
 
 @bp.route('/by_nim/<nim>', methods=['GET'])
 def get_tugas_by_nim(nim):
