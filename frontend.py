@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox, simpledialog
+from tkinter import ttk, messagebox
 import requests
 
 class Tooltip:
@@ -79,24 +79,69 @@ class MainApp(BaseWindow):
         self.tree.pack(pady=(10, 0), padx=10, fill='both', expand=True)
         tk.Frame(self, height=2, bg='gray').pack(fill='x', pady=(0, 10))
 
-
     def create_buttons(self):
-        frame = tk.Frame(self, bg="black")
-        frame.pack(pady=10)
+        __frame = tk.Frame(self, bg="white")
+        __frame.pack(fill=tk.X, pady=10, padx=10)
+
+        left_frame = tk.Frame(__frame, bg="white")
+        left_frame.pack(side=tk.LEFT, anchor=tk.W)
 
         self.buttons = [
-            ActionButton(frame, "Input TA", lambda: self.placeholder("input")),
-            ActionButton(frame, "Edit TA", self.edit_ta_dialog),
-            ActionButton(frame, "Hapus TA", self.delete_ta_dialog),
+            ActionButton(__frame, "Input TA", lambda: self.placeholder("input")),
+            ActionButton(__frame, "Edit TA", self.edit_ta_dialog),
+            ActionButton(__frame, "Hapus TA", self.delete_ta_dialog),
         ]
         for btn in self.buttons:
-            btn.pack(side=tk.LEFT, padx=8, pady=5)
+            btn.pack(side=tk.LEFT, padx=5, pady=5)
+
+        right_frame = tk.Frame(__frame, bg="white")
+        right_frame.pack(side=tk.RIGHT, anchor=tk.E)
+        
+        # Label dan tombol di kanan
+        lbl_dosen = tk.Label(right_frame, text="DOSEN :", bg="white", fg="black")
+        lbl_dosen.pack(side=tk.LEFT, padx=(20, 5))
+        
+        self.btn_periksa = ActionButton(right_frame, "Periksa", self.periksa_ta_dialog)
+        self.btn_periksa.pack(side=tk.LEFT, padx=5)
 
     # Contoh Polymorphism (semua tombol panggil fungsi ini tapi bisa diganti nanti)
     def placeholder(self, mode, data=None):
         win = tk.Toplevel(self)
         win.title(f"{mode.capitalize()} tugas akhir")
 
+        if mode == "delete":
+            for widget in win.winfo_children():
+                widget.destroy()
+
+            nim = data.get("NIM", "________")
+
+            def submit_delete():
+                try:
+                    get_id_url = f"http://127.0.0.1:5000/tugas/by_nim/{nim}"
+                    res = requests.get(get_id_url)
+                    if res.status_code == 200:
+                        id_tugas = res.json()['id_tugas']
+                        url = f"http://127.0.0.1:5000/tugas/delete/{id_tugas}"
+                        response = requests.delete(url)
+                    else:
+                        messagebox.showerror("Gagal", f"Data tidak ditemukan untuk NIM {nim}")
+                        return
+
+                    if response.status_code in [200, 201]:
+                        messagebox.showinfo("Sukses", "Hapus berhasil")
+                        self.tree.delete(*self.tree.get_children())
+                        self.load_data()
+                        win.destroy()
+                    else:
+                        messagebox.showerror("Gagal", f"Gagal hapus: {response.text}")
+                except Exception as e:
+                    messagebox.showerror("Error", str(e))
+
+            tk.Label(win, text=f"Apakah anda yakin ingin menghapus TA\nNIM: {nim}?").pack(pady=10)
+            tk.Button(win, text="HAPUS", command=submit_delete).pack(pady=10)
+            return  # <-- PENTING: jangan lanjut ke bawah
+
+        # selain delete
         labels = ["NIM", "judul", "link_dokumen", "kode_mk"]
         entries = {}
 
@@ -109,46 +154,41 @@ class MainApp(BaseWindow):
             entries[label] = entry
 
         def submit():
-            payload = {key: entry.get() for key, entry in entries.items()}
-            if mode == "input":
-                url = "http://192.168.1.25:5000/tugas/add"
-                response = requests.post(url, json=payload)
-            elif mode == "edit":
-                nim = data["NIM"]
-                url = f"http://192.168.1.25:5000/monitoring/update/{nim}"
-                response = requests.put(url, json=payload)
-            elif mode == "delete":
-                nim = data["NIM"]
-                url = f"http://192.168.1.25:5000/monitoring/delete/{nim}"
-                response = requests.delete(url)
+            try:
+                payload = {key: entry.get() for key, entry in entries.items()}
+                
+                if mode == "input":
+                    url = "http://127.0.0.1:5000/tugas/add"
+                    response = requests.post(url, json=payload)
+                elif mode == "edit":
+                    nim = payload["NIM"]  # Perbaikan di sini
+                    url = f"http://127.0.0.1:5000/tugas/update/{nim}"
+                    response = requests.put(url, json=payload)
 
-            if response.status_code in [200, 201]:
-                messagebox.showinfo("Sukses", f"{mode.capitalize()} berhasil")
-                self.tree.delete(*self.tree.get_children())
-                self.load_data()
-                win.destroy()
-            else:
-                messagebox.showerror("Gagal", f"Gagal {mode}: {response.text}")
+                if response.status_code in [200, 201]:
+                    messagebox.showinfo("Sukses", f"{mode.capitalize()} berhasil")
+                    self.tree.delete(*self.tree.get_children())
+                    self.load_data()
+                    win.destroy()
+                else:
+                    messagebox.showerror("Gagal", f"Gagal {mode}: {response.text}")
+            except Exception as e:
+                messagebox.showerror("Error", str(e))
 
-        if mode == "delete":
-            # Hanya tampilkan konfirmasi
-            for widget in win.winfo_children():
-                widget.destroy()
-            nim = data.get("NIM", "________")
-            tk.Label(win, text=f"Apakah anda yakin ingin menghapus TA\ndengan NIM {nim}?").pack(pady=10)
-            tk.Button(win, text="HAPUS", command=submit).pack(pady=10)
-        else:
-            tk.Button(win, text="Submit", command=submit).grid(row=len(labels), column=0, columnspan=2, pady=10)
+        tk.Button(win, text="Submit", command=submit).grid(row=len(labels), column=0, columnspan=2, pady=10)
 
     def get_selected_data(self):
         selected = self.tree.selection()
         if not selected:
             messagebox.showwarning("Peringatan", "Pilih data terlebih dahulu.")
             return None
+
         values = self.tree.item(selected[0])["values"]
-        if not values:
+        if not values or len(values) < 7:
             return None
-        keys = ["NIM", "nama_mhs", "Matakuliah", "Judul TA", "link"]
+
+        # Kolom: 'NIM', 'Nama', 'Judul', 'Link Doc', 'Status', 'Komentar', 'Dosen'
+        keys = ["NIM", "nama_mhs", "judul", "link_dokumen", "status", "komentar", "nama_dosen"]
         return dict(zip(keys, values))
 
     def edit_ta_dialog(self):
@@ -161,9 +201,90 @@ class MainApp(BaseWindow):
         if data:
             self.placeholder("delete", data)
 
+    def periksa_ta_dialog(self):
+        data = self.get_selected_data()
+        if not data:
+            return
+
+        win = tk.Toplevel(self)
+        win.title("Periksa Tugas Akhir")
+
+        labels = ["NIDN", "status", "komentar"]
+        entries = {}
+
+        for idx, label in enumerate(labels):
+            tk.Label(win, text=label).grid(row=idx, column=0, sticky="w", padx=10, pady=5)
+            if label == "status":
+                entry = ttk.Combobox(win, values=["proposal", "revisi", "pengerjaan", "selesai"])
+                entry.current(0)
+            elif label == "komentar":
+                entry = tk.Text(win, width=40, height=5)
+            else:
+                entry = tk.Entry(win, width=30)
+            entry.grid(row=idx, column=1, padx=10, pady=5)
+            entries[label] = entry
+        
+         # 🔗 Tampilkan link dokumen
+        link = data.get("link_dokumen", "")
+        if link:
+            link_frame = tk.Frame(win)
+            link_frame.grid(row=len(labels), column=0, columnspan=2, pady=10)
+
+            tk.Label(link_frame, text="Link Dokumen:").pack(side=tk.LEFT)
+            link_label = tk.Label(link_frame, text=link, fg="blue", cursor="hand2", wraplength=300)
+            link_label.pack(side=tk.LEFT, padx=5)
+
+            def open_link(event=None):
+                import webbrowser
+                webbrowser.open(link)
+
+            def copy_link():
+                self.clipboard_clear()
+                self.clipboard_append(link)
+                messagebox.showinfo("Disalin", "Link dokumen telah disalin ke clipboard.")
+
+            link_label.bind("<Button-1>", open_link)
+
+            tk.Button(link_frame, text="Copy Link", command=copy_link).pack(side=tk.LEFT, padx=10)
+
+        def submit_periksa():
+            try:
+                # Ambil id_tugas dari NIM
+                nim = data["NIM"]
+                get_id_url = f"http://127.0.0.1:5000/tugas/by_nim/{nim}"
+                res = requests.get(get_id_url)
+                if res.status_code != 200:
+                    messagebox.showerror("Gagal", "Data tugas tidak ditemukan.")
+                    return
+
+                id_tugas = res.json()['id_tugas']
+
+                # Ambil input
+                komentar = entries["komentar"].get("1.0", "end").strip()
+                payload = {
+                    "NIDN": entries["NIDN"].get(),
+                    "status": entries["status"].get(),
+                    "komentar": komentar
+                }
+
+                url = f"http://127.0.0.1:5000/monitoring/update/{id_tugas}"
+                response = requests.put(url, json=payload)
+
+                if response.status_code == 200:
+                    messagebox.showinfo("Sukses", "Data berhasil diperiksa.")
+                    self.tree.delete(*self.tree.get_children())
+                    self.load_data()
+                    win.destroy()
+                else:
+                    messagebox.showerror("Gagal", f"Gagal periksa: {response.text}")
+            except Exception as e:
+                messagebox.showerror("Error", str(e))
+
+        tk.Button(win, text="Submit", command=submit_periksa).grid(row=len(labels) + 1, column=0, columnspan=2, pady=10)
+
     def load_data(self):
         try:
-            response = requests.get("http://192.168.1.25:5000/monitoring/list")
+            response = requests.get("http://127.0.0.1:5000/monitoring/list")
             data = response.json()
             for item in data:
                 row_id = self.tree.insert('', tk.END, values=(
