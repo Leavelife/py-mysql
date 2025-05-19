@@ -17,7 +17,7 @@ def add_tugas():
         if not mahasiswa:
             return jsonify({"error": "NIM tidak terdaftar dalam database mahasiswa!"}), 400
 
-        cursor.execute("SELECT * FROM mata_kuliah WHERE id_mk = %s", (data['kode_mk'],))
+        cursor.execute("SELECT * FROM mata_kuliah WHERE kode_mk = %s", (data['kode_mk'],))
         kode_mk = cursor.fetchone()
         if not kode_mk:
             return jsonify({"error": "Mata kuliah tidak ditemukan!"}), 400
