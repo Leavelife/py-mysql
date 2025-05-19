@@ -1,6 +1,7 @@
-import tkinter as tk
+import customtkinter as ctk
 from tkinter import ttk, messagebox
 import requests
+import webbrowser
 
 class Tooltip:
     def __init__(self, widget, text):
@@ -13,63 +14,47 @@ class Tooltip:
     def show_tip(self, event=None):
         if self.tipwindow or not self.text:
             return
-        x = self.widget.winfo_pointerx() + 20
-        y = self.widget.winfo_pointery() + 10
-        self.tipwindow = tw = tk.Toplevel(self.widget)
+        x = self.widget.winfo_rootx() + 25
+        y = self.widget.winfo_rooty() + 25
+        self.tipwindow = tw = ctk.CTkToplevel(self.widget)
         tw.wm_overrideredirect(True)
         tw.wm_geometry(f"+{x}+{y}")
-        label = tk.Label(
-            tw, text=self.text, justify='left',
-            background="#ffffe0", relief='solid', borderwidth=1,
-            font=("Segoe UI", 9)
+        label = ctk.CTkLabel(
+            tw, 
+            text=self.text, 
+            justify='left',
+            fg_color="#ffffe0",
+            text_color="black",
+            corner_radius=3
         )
-        label.pack(ipadx=1)
+        label.pack(padx=5, pady=5)
 
     def hide_tip(self, event=None):
         if self.tipwindow:
             self.tipwindow.destroy()
             self.tipwindow = None
 
-# Base class untuk window (Encapsulation)
-class BaseWindow(tk.Tk):
+class BaseWindow(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("Sistem Monitoring Tugas Akhir")
         self.geometry("1250x600")
-        self.configure(bg="white")
+        self.configure(fg_color="white")
 
-# Class tombol (Inheritance)
-class ActionButton(tk.Button):
+class ActionButton(ctk.CTkButton):
     def __init__(self, master, text, command):
         super().__init__(
             master,
             text=text,
             command=command,
-            bg="#333",
-            fg="white",
-            activebackground="#555",
-            activeforeground="white",
-            relief="flat",
+            fg_color="#333",
+            hover_color="#1a73e8",
+            text_color="white",
             font=("Lucida Sans", 9, "bold"),
-            padx=15,
-            pady=7,
-            bd=0,
-            cursor="hand2"
+            cursor="hand2",
+            corner_radius=5
         )
-        self.default_bg = "#333"
-        self.hover_bg = "#1a73e8"
-        self.hover_fg = "white"
-        self.default_fg = "white"
-        self.bind("<Enter>", self.on_enter)
-        self.bind("<Leave>", self.on_leave)
 
-    def on_enter(self, e):
-        self.config(bg=self.hover_bg, fg=self.hover_fg)
-
-    def on_leave(self, e):
-        self.config(bg=self.default_bg, fg=self.default_fg)
-
-# Main Window
 class MainApp(BaseWindow):
     def __init__(self):
         super().__init__()
@@ -80,6 +65,17 @@ class MainApp(BaseWindow):
     def create_table(self):
         columns = ('NIM', 'Nama', 'Judul', 'Matakuliah', 'Link Doc', 'Status', 'Komentar', 'Dosen')
         self.tree = ttk.Treeview(self, columns=columns, show='headings', height=15)
+        
+        # Style configuration
+        style = ttk.Style()
+        style.theme_use("default")
+        style.configure("Treeview", 
+                      background="white",
+                      foreground="black",
+                      fieldbackground="white",
+                      rowheight=25)
+        style.map('Treeview', background=[('selected', '#1a73e8')])
+        
         for col in columns:
             self.tree.heading(col, text=col)
             self.tree.column('NIM', width=80, anchor='center')
@@ -90,38 +86,42 @@ class MainApp(BaseWindow):
             self.tree.column('Status', width=100, anchor='center')
             self.tree.column('Komentar', width=200)
             self.tree.column('Dosen', width=100, anchor='center')
+            
         self.tree.pack(pady=(10, 0), padx=10, fill='both', expand=True)
-        tk.Frame(self, height=2, bg='gray').pack(fill='x', pady=(0, 10))
+        ctk.CTkFrame(self, height=2, fg_color='gray').pack(fill='x', pady=(0, 10))
 
     def create_buttons(self):
-        __frame = tk.Frame(self, bg="white")
-        __frame.pack(fill=tk.X, pady=10, padx=10)
+        button_frame = ctk.CTkFrame(self, fg_color="white")
+        button_frame.pack(fill='x', pady=10, padx=10)
 
-        left_frame = tk.Frame(__frame, bg="white")
-        left_frame.pack(side=tk.LEFT, anchor=tk.W)
+        # Left side buttons
+        left_frame = ctk.CTkFrame(button_frame, fg_color="white")
+        left_frame.pack(side='left', anchor='w')
 
         self.buttons = [
-            ActionButton(__frame, "Input TA", lambda: self.placeholder("input")),
-            ActionButton(__frame, "Edit TA", self.edit_ta_dialog),
-            ActionButton(__frame, "Hapus TA", self.delete_ta_dialog),
+            ActionButton(left_frame, "Input TA", lambda: self.placeholder("input")),
+            ActionButton(left_frame, "Edit TA", self.edit_ta_dialog),
+            ActionButton(left_frame, "Hapus TA", self.delete_ta_dialog),
         ]
         for btn in self.buttons:
-            btn.pack(side=tk.LEFT, padx=5, pady=5)
+            btn.pack(side='left', padx=5, pady=5)
 
-        right_frame = tk.Frame(__frame, bg="white")
-        right_frame.pack(side=tk.RIGHT, anchor=tk.E)
+        # Right side buttons
+        right_frame = ctk.CTkFrame(button_frame, fg_color="white")
+        right_frame.pack(side='right', anchor='e')
         
-        # Label dan tombol di kanan
-        lbl_dosen = tk.Label(right_frame, text="DOSEN :", bg="white", fg="black")
-        lbl_dosen.pack(side=tk.LEFT, padx=(20, 5))
+        lbl_dosen = ctk.CTkLabel(right_frame, text="DOSEN :", text_color="black", fg_color="white")
+        lbl_dosen.pack(side='left', padx=(20, 5))
         
         self.btn_periksa = ActionButton(right_frame, "Periksa", self.periksa_ta_dialog)
-        self.btn_periksa.pack(side=tk.LEFT, padx=5)
+        self.btn_periksa.pack(side='left', padx=5)
 
-    # Contoh Polymorphism (semua tombol panggil fungsi ini tapi bisa diganti nanti)
     def placeholder(self, mode, data=None):
-        win = tk.Toplevel(self)
+        win = ctk.CTkToplevel(self)
         win.title(f"{mode.capitalize()} tugas akhir")
+        win.geometry("500x300")
+        win.transient(self)
+        win.grab_set()
 
         if mode == "delete":
             for widget in win.winfo_children():
@@ -151,27 +151,28 @@ class MainApp(BaseWindow):
                 except Exception as e:
                     messagebox.showerror("Error", str(e))
 
-            tk.Label(win, text=f"Apakah anda yakin ingin menghapus TA\nNIM: {nim}?").pack(pady=10)
-            tk.Button(win, text="HAPUS", command=submit_delete).pack(pady=10)
-            return  # <-- PENTING: jangan lanjut ke bawah
+            ctk.CTkLabel(win, text=f"Apakah anda yakin ingin menghapus TA\nNIM: {nim}?").pack(pady=20)
+            ctk.CTkButton(win, text="HAPUS", command=submit_delete, fg_color="#d9534f", hover_color="#c9302c").pack(pady=10)
+            return
 
-        # selain delete
+        # Form frame
+        form_frame = ctk.CTkFrame(win, fg_color="white")
+        form_frame.pack(pady=20, padx=20, fill='both', expand=True)
+
         labels = ["NIM", "judul", "link_dokumen", "kode_mk", "status"]
         entries = {}
 
         for idx, label in enumerate(labels):
-            tk.Label(win, text=label).grid(row=idx, column=0, sticky="w", padx=10, pady=5)
+            ctk.CTkLabel(form_frame, text=label.capitalize()+":", anchor='w').grid(row=idx, column=0, sticky='w', padx=10, pady=5)
 
-            # 🧠 Gunakan Combobox khusus untuk status
             if label == "status":
-                entry = ttk.Combobox(win, values=["proposal", "revisi", "pengerjaan", "selesai"], state="readonly")
-                entry.current(0)  # default ke pilihan pertama
+                entry = ctk.CTkComboBox(form_frame, values=["proposal", "revisi", "pengerjaan", "selesai"])
+                entry.set("proposal")
             else:
-                entry = tk.Entry(win, width=30)
+                entry = ctk.CTkEntry(form_frame, width=250)
 
             entry.grid(row=idx, column=1, padx=10, pady=5)
 
-            # 🔁 Masukkan data jika ada (untuk mode edit)
             if data and label in data:
                 if label == "status":
                     entry.set(data[label])
@@ -179,7 +180,6 @@ class MainApp(BaseWindow):
                     entry.insert(0, data[label])
 
             entries[label] = entry
-
 
         def submit():
             try:
@@ -189,7 +189,7 @@ class MainApp(BaseWindow):
                     url = "http://127.0.0.1:5000/tugas/add"
                     response = requests.post(url, json=payload)
                 elif mode == "edit":
-                    nim = payload["NIM"]  # Perbaikan di sini
+                    nim = payload["NIM"]
                     url = f"http://127.0.0.1:5000/tugas/update/{nim}"
                     response = requests.put(url, json=payload)
 
@@ -203,7 +203,7 @@ class MainApp(BaseWindow):
             except Exception as e:
                 messagebox.showerror("Error", str(e))
 
-        tk.Button(win, text="Submit", command=submit).grid(row=len(labels), column=0, columnspan=2, pady=10)
+        ctk.CTkButton(form_frame, text="Submit", command=submit).grid(row=len(labels), column=0, columnspan=2, pady=10)
 
     def get_selected_data(self):
         selected = self.tree.selection()
@@ -215,7 +215,6 @@ class MainApp(BaseWindow):
         if not values or len(values) < 7:
             return None
 
-        # Kolom: 'NIM', 'Nama', 'Judul', 'Link Doc', 'Status', 'Komentar', 'Dosen'
         keys = ["NIM", "nama_mhs", "judul", "nama_mk", "link_dokumen", "status", "komentar", "nama_dosen"]
         return dict(zip(keys, values))
 
@@ -234,33 +233,34 @@ class MainApp(BaseWindow):
         if not data:
             return
 
-        win = tk.Toplevel(self)
+        win = ctk.CTkToplevel(self)
         win.title("Periksa Tugas Akhir")
+        win.geometry("500x400")
+        win.transient(self)
+        win.grab_set()
 
-        labels = ["NIDN", "komentar"]
-        entries = {}
+        main_frame = ctk.CTkFrame(win, fg_color="white")
+        main_frame.pack(pady=20, padx=20, fill='both', expand=True)
 
-        for idx, label in enumerate(labels):
-            tk.Label(win, text=label).grid(row=idx, column=0, sticky="w", padx=10, pady=5)
-            if label == "komentar":
-                entry = tk.Text(win, width=40, height=5)
-            else:
-                entry = tk.Entry(win, width=30)
-            entry.grid(row=idx, column=1, padx=10, pady=5)
-            entries[label] = entry
-        
-         # 🔗 Tampilkan link dokumen
+        # NIDN Field
+        ctk.CTkLabel(main_frame, text="NIDN:", anchor='w').grid(row=0, column=0, sticky='w', padx=10, pady=5)
+        nidn_entry = ctk.CTkEntry(main_frame, width=300)
+        nidn_entry.grid(row=0, column=1, padx=10, pady=5)
+
+        # Komentar Field
+        ctk.CTkLabel(main_frame, text="Komentar:", anchor='w').grid(row=1, column=0, sticky='nw', padx=10, pady=5)
+        komentar_entry = ctk.CTkTextbox(main_frame, width=300, height=150)
+        komentar_entry.grid(row=1, column=1, padx=10, pady=5)
+
+        # Link Dokumen
         link = data.get("link_dokumen", "")
         if link:
-            link_frame = tk.Frame(win)
-            link_frame.grid(row=len(labels), column=0, columnspan=2, pady=10)
+            link_frame = ctk.CTkFrame(main_frame, fg_color="white")
+            link_frame.grid(row=2, column=0, columnspan=2, pady=10, sticky='w')
 
-            tk.Label(link_frame, text="Link Dokumen:").pack(side=tk.LEFT)
-            link_label = tk.Label(link_frame, text=link, fg="blue", cursor="hand2", wraplength=300)
-            link_label.pack(side=tk.LEFT, padx=5)
+            ctk.CTkLabel(link_frame, text="Link Dokumen:", anchor='w').pack(side='left')
 
-            def open_link(event=None):
-                import webbrowser
+            def open_link():
                 webbrowser.open(link)
 
             def copy_link():
@@ -268,13 +268,21 @@ class MainApp(BaseWindow):
                 self.clipboard_append(link)
                 messagebox.showinfo("Disalin", "Link dokumen telah disalin ke clipboard.")
 
-            link_label.bind("<Button-1>", open_link)
+            link_btn = ctk.CTkButton(
+                link_frame, 
+                text=link[:30] + "..." if len(link) > 30 else link,
+                command=open_link,
+                fg_color="transparent",
+                text_color="#1a73e8",
+                hover_color="#e6f0fd",
+                anchor='w'
+            )
+            link_btn.pack(side='left', padx=5)
 
-            tk.Button(link_frame, text="Copy Link", command=copy_link).pack(side=tk.LEFT, padx=10)
+            ctk.CTkButton(link_frame, text="Copy", command=copy_link, width=60).pack(side='left', padx=5)
 
         def submit_periksa():
             try:
-                # Ambil id_tugas dari NIM
                 nim = data["NIM"]
                 get_id_url = f"http://127.0.0.1:5000/tugas/by_nim/{nim}"
                 res = requests.get(get_id_url)
@@ -283,11 +291,9 @@ class MainApp(BaseWindow):
                     return
 
                 id_tugas = res.json()['id_tugas']
-
-                # Ambil input
-                komentar = entries["komentar"].get("1.0", "end").strip()
+                komentar = komentar_entry.get("1.0", "end").strip()
                 payload = {
-                    "NIDN": entries["NIDN"].get(),
+                    "NIDN": nidn_entry.get(),
                     "komentar": komentar
                 }
 
@@ -304,57 +310,36 @@ class MainApp(BaseWindow):
             except Exception as e:
                 messagebox.showerror("Error", str(e))
 
-        tk.Button(win, text="Submit", command=submit_periksa).grid(row=len(labels) + 1, column=0, columnspan=2, pady=10)
+        ctk.CTkButton(
+            main_frame, 
+            text="Submit", 
+            command=submit_periksa
+        ).grid(row=3, column=0, columnspan=2, pady=20)
 
     def load_data(self):
         try:
             response = requests.get("http://127.0.0.1:5000/monitoring/list")
-            data = response.json()
-            for item in data:
-                row_id = self.tree.insert('', tk.END, values=(
-                    item['NIM'], item['nama_mhs'], item['judul'], item['nama_mk'], item['link_dokumen'],
-                    item['status'], item['komentar'], item['nama_dosen']
-                ))
-            self.tree.bind("<Motion>", self.on_mouse_move)
-
+            if response.status_code == 200:
+                data = response.json()
+                self.tree.delete(*self.tree.get_children())
+                for item in data:
+                    self.tree.insert('', 'end', values=(
+                        item['NIM'], 
+                        item['nama_mhs'], 
+                        item['judul'], 
+                        item['nama_mk'], 
+                        item['link_dokumen'],
+                        item['status'], 
+                        item['komentar'], 
+                        item['nama_dosen']
+                    ))
+            else:
+                messagebox.showerror("Error", f"Gagal memuat data: {response.text}")
         except Exception as e:
-            print(f"Gagal mengambil data: {e}")
-    
-    def show_tooltip(self, event, text):
-        self.tooltip = Tooltip(self.tree, text)
-        self.tooltip.show_tip()
+            messagebox.showerror("Error", f"Gagal terhubung ke server: {str(e)}")
 
-    def hide_tooltip(self, event):
-        if hasattr(self, 'tooltip'):
-            self.tooltip.hide_tip()
-
-    def on_mouse_move(self, event):
-        region = self.tree.identify("region", event.x, event.y)
-        if region == "cell":
-            row_id = self.tree.identify_row(event.y)
-            col = self.tree.identify_column(event.x)
-
-            if row_id:
-                item = self.tree.item(row_id)['values']
-
-                # Ambil teks sesuai kolom
-                col_index = int(col.replace('#', '')) - 1
-                if 0 <= col_index < len(item):
-                    text = str(item[col_index])
-
-                    # Tampilkan tooltip jika beda dari sebelumnya
-                    if getattr(self, 'last_tooltip_text', None) != text:
-                        if hasattr(self, 'tooltip'):
-                            self.tooltip.hide_tip()
-                        self.tooltip = Tooltip(self.tree, text)
-                        self.tooltip.show_tip()
-                        self.last_tooltip_text = text
-        else:
-            if hasattr(self, 'tooltip'):
-                self.tooltip.hide_tip()
-                self.last_tooltip_text = None
-
-# Run App
 if __name__ == '__main__':
+    ctk.set_appearance_mode("light")
+    ctk.set_default_color_theme("blue")
     app = MainApp()
     app.mainloop()
