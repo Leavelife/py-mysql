@@ -60,8 +60,7 @@ def update_monitoring(id_tugas):
             UPDATE monitoring_tugas
             SET status = %s,
                 komentar = %s,
-                NIDN = %s,
-                tanggal_update = NOW()
+                NIDN = %s
             WHERE id_tugas = %s
         '''
         cursor.execute(query, (
