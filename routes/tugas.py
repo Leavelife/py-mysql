@@ -10,28 +10,29 @@ def add_tugas():
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # ✅ Validasi apakah NIM ada di tabel mahasiswa
+        # Validasi apakah NIM ada di tabel mahasiswa
         cursor.execute("SELECT * FROM mahasiswa WHERE NIM = %s", (data['NIM'],))
         mahasiswa = cursor.fetchone()
 
         if not mahasiswa:
             return jsonify({"error": "NIM tidak terdaftar dalam database mahasiswa!"}), 400
 
-        cursor.execute("SELECT * FROM mata_kuliah WHERE id_mk = %s", (data['kode_mk'],))
+        cursor.execute("SELECT * FROM mata_kuliah WHERE kode_mk = %s", (data['kode_mk'],))
         kode_mk = cursor.fetchone()
         if not kode_mk:
             return jsonify({"error": "Mata kuliah tidak ditemukan!"}), 400
 
-        # ✅ Lanjutkan input tugas
+        # Lanjutkan input tugas
         query = '''
-            INSERT INTO tugas (NIM, judul, link_dokumen, kode_mk)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO tugas (NIM, judul, link_dokumen, kode_mk, status)
+            VALUES (%s, %s, %s, %s, %s)
         '''
         cursor.execute(query, (
             data['NIM'],
             data['judul'],
             data['link_dokumen'],
-            data['kode_mk']
+            data['kode_mk'],
+            data['status']
         ))
 
         conn.commit()
@@ -79,9 +80,10 @@ def update_tugas(nim):
             UPDATE tugas SET 
                 judul = %s,
                 link_dokumen = %s,
-                kode_mk = %s
+                kode_mk = %s,
+                status= %s
             WHERE NIM = %s
-        """, (data["judul"], data["link_dokumen"], data["kode_mk"], nim))
+        """, (data["judul"], data["link_dokumen"], data["kode_mk"], data["status"], nim))
 
         conn.commit()
         return jsonify({"message": "Data tugas berhasil diupdate"}), 200

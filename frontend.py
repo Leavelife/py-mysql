@@ -35,7 +35,7 @@ class BaseWindow(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Sistem Monitoring Tugas Akhir")
-        self.geometry("1000x500")
+        self.geometry("1250x600")
         self.configure(bg="white")
 
 # Class tombol (Inheritance)
@@ -45,16 +45,29 @@ class ActionButton(tk.Button):
             master,
             text=text,
             command=command,
-            bg="#444",           # tombol background (dark gray)
-            fg="white",          # teks putih
-            activebackground="#666",  # warna saat ditekan
+            bg="#333",
+            fg="white",
+            activebackground="#555",
             activeforeground="white",
-            relief="flat",       # gaya flat
-            font=("Segoe UI", 9, "bold"),
-            padx=10,
-            pady=5,
-            bd=0
+            relief="flat",
+            font=("Lucida Sans", 9, "bold"),
+            padx=15,
+            pady=7,
+            bd=0,
+            cursor="hand2"
         )
+        self.default_bg = "#333"
+        self.hover_bg = "#1a73e8"
+        self.hover_fg = "white"
+        self.default_fg = "white"
+        self.bind("<Enter>", self.on_enter)
+        self.bind("<Leave>", self.on_leave)
+
+    def on_enter(self, e):
+        self.config(bg=self.hover_bg, fg=self.hover_fg)
+
+    def on_leave(self, e):
+        self.config(bg=self.default_bg, fg=self.default_fg)
 
 # Main Window
 class MainApp(BaseWindow):
@@ -65,13 +78,14 @@ class MainApp(BaseWindow):
         self.load_data()
 
     def create_table(self):
-        columns = ('NIM', 'Nama', 'Judul', 'Link Doc', 'Status', 'Komentar', 'Dosen')
+        columns = ('NIM', 'Nama', 'Judul', 'Matakuliah', 'Link Doc', 'Status', 'Komentar', 'Dosen')
         self.tree = ttk.Treeview(self, columns=columns, show='headings', height=15)
         for col in columns:
             self.tree.heading(col, text=col)
             self.tree.column('NIM', width=80, anchor='center')
             self.tree.column('Nama', width=120)
             self.tree.column('Judul', width=220)
+            self.tree.column('Matakuliah', width=220)
             self.tree.column('Link Doc', width=180)
             self.tree.column('Status', width=100, anchor='center')
             self.tree.column('Komentar', width=200)
@@ -142,16 +156,30 @@ class MainApp(BaseWindow):
             return  # <-- PENTING: jangan lanjut ke bawah
 
         # selain delete
-        labels = ["NIM", "judul", "link_dokumen", "kode_mk"]
+        labels = ["NIM", "judul", "link_dokumen", "kode_mk", "status"]
         entries = {}
 
         for idx, label in enumerate(labels):
             tk.Label(win, text=label).grid(row=idx, column=0, sticky="w", padx=10, pady=5)
-            entry = tk.Entry(win, width=30)
+
+            # 🧠 Gunakan Combobox khusus untuk status
+            if label == "status":
+                entry = ttk.Combobox(win, values=["proposal", "revisi", "pengerjaan", "selesai"], state="readonly")
+                entry.current(0)  # default ke pilihan pertama
+            else:
+                entry = tk.Entry(win, width=30)
+
             entry.grid(row=idx, column=1, padx=10, pady=5)
+
+            # 🔁 Masukkan data jika ada (untuk mode edit)
             if data and label in data:
-                entry.insert(0, data[label])
+                if label == "status":
+                    entry.set(data[label])
+                else:
+                    entry.insert(0, data[label])
+
             entries[label] = entry
+
 
         def submit():
             try:
@@ -188,7 +216,7 @@ class MainApp(BaseWindow):
             return None
 
         # Kolom: 'NIM', 'Nama', 'Judul', 'Link Doc', 'Status', 'Komentar', 'Dosen'
-        keys = ["NIM", "nama_mhs", "judul", "link_dokumen", "status", "komentar", "nama_dosen"]
+        keys = ["NIM", "nama_mhs", "judul", "nama_mk", "link_dokumen", "status", "komentar", "nama_dosen"]
         return dict(zip(keys, values))
 
     def edit_ta_dialog(self):
@@ -209,15 +237,12 @@ class MainApp(BaseWindow):
         win = tk.Toplevel(self)
         win.title("Periksa Tugas Akhir")
 
-        labels = ["NIDN", "status", "komentar"]
+        labels = ["NIDN", "komentar"]
         entries = {}
 
         for idx, label in enumerate(labels):
             tk.Label(win, text=label).grid(row=idx, column=0, sticky="w", padx=10, pady=5)
-            if label == "status":
-                entry = ttk.Combobox(win, values=["proposal", "revisi", "pengerjaan", "selesai"])
-                entry.current(0)
-            elif label == "komentar":
+            if label == "komentar":
                 entry = tk.Text(win, width=40, height=5)
             else:
                 entry = tk.Entry(win, width=30)
@@ -263,7 +288,6 @@ class MainApp(BaseWindow):
                 komentar = entries["komentar"].get("1.0", "end").strip()
                 payload = {
                     "NIDN": entries["NIDN"].get(),
-                    "status": entries["status"].get(),
                     "komentar": komentar
                 }
 
@@ -288,7 +312,7 @@ class MainApp(BaseWindow):
             data = response.json()
             for item in data:
                 row_id = self.tree.insert('', tk.END, values=(
-                    item['NIM'], item['nama_mhs'], item['judul'], item['link_dokumen'],
+                    item['NIM'], item['nama_mhs'], item['judul'], item['nama_mk'], item['link_dokumen'],
                     item['status'], item['komentar'], item['nama_dosen']
                 ))
             self.tree.bind("<Motion>", self.on_mouse_move)

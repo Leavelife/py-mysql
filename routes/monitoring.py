@@ -22,8 +22,6 @@ def add_monitoring():
     conn.close()
     return jsonify({'message': 'Monitoring ditambahkan'}), 201
 
-
-
 @bp.route('/list', methods=['GET'])
 def list_tugas():
     conn = get_db_connection()
@@ -43,32 +41,10 @@ def update_monitoring(id_tugas):
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # 🔍 Cek apakah id_tugas valid
-        cursor.execute("SELECT * FROM tugas WHERE id_tugas = %s", (id_tugas,))
-        tugas = cursor.fetchone()
-        if not tugas:
-            return jsonify({"error": f"Tugas dengan ID {id_tugas} tidak ditemukan."}), 404
-
-        # 🔍 Cek apakah NIDN dosen valid
-        cursor.execute("SELECT * FROM dosen WHERE NIDN = %s", (data['NIDN'],))
-        dosen = cursor.fetchone()
-        if not dosen:
-            return jsonify({"error": f"NIDN {data['NIDN']} tidak ditemukan dalam data dosen."}), 400
-
-        # 🔄 Update monitoring_tugas
-        query = '''
-            UPDATE monitoring_tugas
-            SET status = %s,
-                komentar = %s,
-                NIDN = %s,
-                tanggal_update = NOW()
-            WHERE id_tugas = %s
-        '''
-        cursor.execute(query, (
-            data['status'],
-            data['komentar'],
-            data['NIDN'],
-            id_tugas
+        cursor.callproc("sp_periksa_tugas", (
+            id_tugas,
+            data["NIDN"],
+            data["komentar"]
         ))
 
         conn.commit()
